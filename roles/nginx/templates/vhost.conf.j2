@@ -1,0 +1,111 @@
+#jinja2: lstrip_blocks: True
+
+# {{ ansible_managed }}
+# Nginx virtual host configuration file
+
+{% if __app__.server_blocks is defined and __app__.server_blocks != [] %}
+{% for sb in __app__.server_blocks -%}
+server {
+
+  # LISTENER/FQDN/WEBROOT/INDEX FILE CONFIGURATION
+  {% if sb.server_name is defined and sb.server_name != "" -%}
+  server_name {{ sb.server_name }};
+  {% endif %}
+  {% if sb.listen is defined and sb.listen != [] -%}
+  {% for listener in sb.listen %}
+  listen {{ listener }};
+  {% endfor %}
+  {% endif %}
+  {% if sb.root is defined and sb.root != "" -%}
+  root {{ sb.root }};
+  {% endif %}
+  {% if sb.index is defined and sb.index != "" -%}
+  index {{ sb.index }};
+  {% endif %}
+  {% if sb.resolver is defined and sb.resolver != "" -%}
+  resolver {{ sb.resolver }};
+  {% endif %}
+
+
+  # LOG CONFIGURATION
+{% if sb.log is defined and sb.log != {} %}
+  {% if sb.log.error.path != "" %}
+  error_log {{ sb.log.error.path }} {% if sb.log.error.options != "" %}{{ sb.log.error.options }}{% endif %};
+  {% endif %}
+  {% if sb.log.access.path != "" %}
+  access_log {{ sb.log.access.path }} {% if sb.log.access.options != "" %}{{ sb.log.access.options }}{% endif %};
+  {% endif %}
+{% endif %}
+
+
+  # SSL CONFIGURATION
+{% if sb.ssl is defined and sb.ssl != {} %}
+  {% if sb.ssl.certificate is defined and sb.ssl.certificate != "" %}
+  ssl_certificate {{ sb.ssl.certificate }};
+  {% endif %}
+  {% if sb.ssl.certificate_key is defined and sb.ssl.certificate_key != "" %}
+  ssl_certificate_key {{ sb.ssl.certificate_key }};
+  {% endif %}
+  {% if sb.ssl.trusted_certificate is defined and sb.ssl.trusted_certificate != "" %}
+  ssl_trusted_certificate {{ sb.ssl.trusted_certificate }};
+  {% endif %}
+  {% if sb.ssl.dhparam is defined and sb.ssl.dhparam != "" %}
+  ssl_dhparam {{ sb.ssl.dhparam }};
+  {% endif %}
+  {% if sb.ssl.protocols is defined and sb.ssl.protocols != "" %}
+  ssl_protocols {{ sb.ssl.protocols }};
+  {% endif %}
+  {% if sb.ssl.prefer_server_ciphers is defined and sb.ssl.prefer_server_ciphers != "" %}
+  ssl_prefer_server_ciphers {{ sb.ssl.prefer_server_ciphers }};
+  {% endif %}
+  {% if sb.ssl.ciphers is defined and sb.ssl.ciphers != "" %}
+  ssl_ciphers {{ sb.ssl.ciphers }};
+  {% endif %}
+  {% if sb.ssl.session_tickets is defined and sb.ssl.session_tickets != "" %}
+  ssl_session_tickets {{ sb.ssl.session_tickets }};
+  {% endif %}
+  {% if sb.ssl.session_timeout is defined and sb.ssl.session_timeout != "" %}
+  ssl_session_timeout {{ sb.ssl.session_timeout }};
+  {% endif %}
+  {% if sb.ssl.session_cache is defined and sb.ssl.session_cache != "" %}
+  ssl_session_cache {{ sb.ssl.session_cache }};
+  {% endif %}
+  {% if sb.ssl.buffer_size is defined and sb.ssl.buffer_size != "" %}
+  ssl_buffer_size {{ sb.ssl.buffer_size }};
+  {% endif %}
+  {% if sb.ssl.stapling is defined and sb.ssl.stapling != "" %}
+  ssl_stapling {{ sb.ssl.stapling }};
+  {% endif %}
+  {% if sb.ssl.stapling_verify is defined and sb.ssl.stapling_verify != "" %}
+  ssl_stapling_verify {{ sb.ssl.stapling_verify }};
+  {% endif %}
+{% endif %}
+
+
+  # LOCATION CONFIGURATION
+{% if sb.locations is defined and sb.locations != [] %}
+  {% for loc in sb.locations %}
+    location {{ loc.match }} {
+    {{ loc.config | indent(12, False) }}
+    }
+  {% endfor %}
+{% endif %}
+
+
+  # HEADER CONFIGURATION
+{% if sb.headers is defined and sb.headers != [] %}
+{% for hdr in sb.headers %}
+  {% if hdr.type != "" %}
+  add_header {{ hdr.type }} {% if hdr.value != "" %}{{ hdr.value }}{% endif %};
+  {% endif %}
+{% endfor %}
+{% endif %}
+
+
+  # EXTRA/LITERAL CONFIGURATION
+{% if sb.extra_configuration is defined and sb.extra_configuration != "" %}
+  {{ sb.extra_configuration | indent(2, False) }}
+{% endif %}
+}
+{% endfor %}
+{% endif %}

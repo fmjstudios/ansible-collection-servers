@@ -1,0 +1,68 @@
+# {{ ansible_managed }}
+# Nginx virtual host configuration file
+
+user {{ nginx_main_user }};
+
+worker_processes {{ nginx_main_worker_processes }};
+
+error_log {{ nginx_main_error_log_file }};
+pid {{ nginx_main_pid_file }};
+
+{% if nginx_main_extra_config is defined %}
+{{ nginx_main_extra_config }}
+{% endif %}
+
+events {
+  worker_connections {{ nginx_events_worker_connections }};
+  multi_accept {{ nginx_events_multi_accept }};
+}
+
+http {
+  include {{ __nginx_mime_file_path }};
+  default_type  application/octet-stream;
+
+  log_format {{ nginx_http_log_format }}
+  access_log {{ nginx_http_access_log }};
+
+  sendfile {{ nginx_http_sendfile }};
+  tcp_nopush {{ nginx_http_tcp_nopush }};
+  tcp_nodelay {{ nginx_http_tcp_nodelay }};
+
+
+  keepalive_timeout {{ nginx_http_keepalive_timeout }};
+  keepalive_requests {{ nginx_http_keepalive_requests }};
+
+
+  gzip {{ nginx_http_gzip }};
+
+  client_max_body_size {{ nginx_http_client_max_body_size }};
+
+  server_tokens {{ nginx_http_server_tokens }};
+  server_names_hash_bucket_size {{ nginx_http_server_names_hash_bucket_size }};
+
+  {% if nginx_http_proxy_cache_path is defined and nginx_http_proxy_cache_path != "" %}
+  proxy_cache_path {{ nginx_http_proxy_cache_path }}
+  {% endif %}
+
+  {% if nginx_http_extra_config is defined %}
+  {{ nginx_http_extra_config | indent(4, False)}}
+  {% endif %}
+
+
+{% for upstream in nginx_http_upstreams %}
+    upstream {{ upstream.name }} {
+{% if upstream.strategy is defined %}
+        {{ upstream.strategy }};
+{% endif %}
+{% for server in upstream.servers %}
+        server {{ server }};
+{% endfor %}
+{% if upstream.keepalive is defined %}
+        keepalive {{ upstream.keepalive }};
+{% endif %}
+    }
+{% endfor %}
+
+  include {{ __nginx_conf_path }}/*.conf;
+  include {{ __nginx_vhost_include_path }}/*;
+}

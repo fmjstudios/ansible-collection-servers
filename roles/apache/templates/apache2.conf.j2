@@ -1,0 +1,48 @@
+#jinja2: lstrip_blocks: True
+
+# {{ ansible_managed }}
+# Apache HTTP server configuration file
+
+DefaultRuntimeDir ${APACHE_RUN_DIR}
+PidFile ${APACHE_PID_FILE}
+User ${APACHE_RUN_USER}
+Group ${APACHE_RUN_GROUP}
+
+Timeout {{ apache_conf_timeout }}
+KeepAlive {{ apache_conf_keep_alive | capitalize }}
+KeepAliveTimeout {{ apache_conf_keep_alive_timeout }}
+MaxKeepAliveRequests {{ apache_conf_max_keep_alive_requests }}
+
+HostnameLookups {{ apache_conf_hostname_lookups }}
+
+ErrorLog {{ apache_conf_error_log }}
+LogLevel {{ apache_conf_log_level }}
+
+{% for inc in apache_conf_include_optional %}
+IncludeOptional {{ inc }}
+{% endfor %}
+
+{% for inc in apache_conf_include %}
+Include {{ inc }}
+{% endfor %}
+
+
+{% for bloc in  apache_conf_dir_blocks %}
+<Directory "{{ bloc.path }}">
+    Options {{ bloc.options }}
+    AllowOverride {{ bloc.allow_override }}
+    Require {{ bloc.require }}
+</Directory>
+{% endfor %}
+
+AccessFileName {{ apache_conf_access_file_name }}
+
+{% for bloc in apache_conf_file_match_blocks%}
+<FilesMatch "{{ bloc.match }}">
+    Require {{ bloc.require }}
+</FilesMatch>
+{% endfor %}
+
+{% for logs in apache_conf_log_formats %}
+LogFormat "{{ logs.format }}" {{ logs.name }}
+{% endfor %}

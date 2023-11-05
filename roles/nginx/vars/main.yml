@@ -1,0 +1,23 @@
+---
+__deps:
+  - curl
+  - gnupg2
+  - ca-certificates
+  - lsb-release
+  - ubuntu-keyring
+  - openssl
+
+__nginx_user: "www-data"
+
+__nginx_key_valid_fingerprint: 573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62
+
+__nginx_package_name: nginx
+
+__nginx_mime_file_path: /etc/nginx/mime.types
+__nginx_conf_dir: /etc/nginx
+__nginx_conf_path: /etc/nginx/conf.d
+__nginx_conf_file_path: /etc/nginx/nginx.conf
+__nginx_vhost_path: /etc/nginx/sites-available
+__nginx_vhost_include_path: /etc/nginx/sites-enabled
+__nginx_vhost_default_file_path: /etc/nginx/sites-enabled/default
+__nginx_systemd_service: nginx

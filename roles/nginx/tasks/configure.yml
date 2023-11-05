@@ -1,0 +1,114 @@
+---
+- name: configure | Ensure the Nginx group exists
+  ansible.builtin.group:
+    name: "{{ nginx_main_group }}"
+    state: present
+
+- name: configure | Ensure the system users are part of the Nginx system user group
+  ansible.builtin.user:
+    name: "{{ __user__ }}"
+    group: "{{ nginx_main_group }}"
+    append: true
+  loop: "{{ nginx_system_users }}"
+  loop_control:
+    loop_var: __user__
+
+- name: configure | Remove the default Nginx configuration file if configured
+  ansible.builtin.file:
+    path: "{{ __nginx_vhost_default_file_path }}"
+    state: absent
+  notify: restart nginx
+  when:
+    - nginx_remove_default_vhost
+
+- name: configure | Remove the legacy 'vhosts.conf' configuration file
+  ansible.builtin.file:
+    path: "{{ __nginx_vhost_path }}/vhosts.conf"
+    state: absent
+
+- name: configure | Copy the PHP fastcgi_params configuration file to Nginx server
+  ansible.builtin.copy:
+    src: fastcgi_params
+    dest: "{{ __nginx_conf_dir }}/fastcgi_params"
+    force: true
+    owner: "{{ nginx_main_user }}"
+    group: "{{ nginx_main_group }}"
+    mode: 0644
+  notify:
+    - restart nginx
+
+- name: configure | Configure general Nginx settings via the main context
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ __nginx_conf_file_path }}"
+    force: true
+    owner: "{{ nginx_main_user }}"
+    group: "{{ nginx_main_group }}"
+    mode: 0660
+  notify:
+    - restart nginx
+
+- name: configure | Ensure generation of fresh Diffie-Hellman parameters if configured
+  block:
+    - name: configure | Ensure configured path exists
+      ansible.builtin.file:
+        path: "{{ __srv__.ssl.dhparam | dirname }}"
+        state: directory
+        owner: "{{ nginx_main_user }}"
+        group: "{{ nginx_main_group }}"
+        mode: 0755
+      loop: "{{ _nginx_vhost_servers_ }}"
+      loop_control:
+        loop_var: __srv__
+      when: __srv__.ssl.dhparam is defined
+
+    - name: configure | Generate Diffie-Hellman parameters with OpenSSL
+      community.crypto.openssl_dhparam:
+        path: "{{ __srv__.ssl.dhparam }}"
+        size: 4096
+      loop: "{{ _nginx_vhost_servers_ }}"
+      loop_control:
+        loop_var: __srv__
+      when: __srv__.ssl.dhparam is defined
+
+- name: configure | Configure the different virtual hosts
+  ansible.builtin.template:
+    src: vhost.conf.j2
+    dest: "{{ __nginx_vhost_path }}/{{ __app__.label }}.conf"
+    force: true
+    owner: "{{ nginx_main_user }}"
+    group: "{{ nginx_main_group }}"
+    mode: 0660
+  loop: "{{ nginx_vhost_config }}"
+  loop_control:
+    loop_var: __app__
+  notify:
+    - restart nginx
+
+- name: configure | Link the available configuration into enabled configuration
+  ansible.builtin.file:
+    src: "{{ __nginx_vhost_path }}/{{ __app__.label }}.conf"
+    dest: "{{ __nginx_vhost_include_path }}/{{ __app__.label }}.conf"
+    state: link
+    owner: "{{ nginx_main_user }}"
+    group: "{{ nginx_main_group }}"
+  loop: "{{ nginx_vhost_config }}"
+  loop_control:
+    loop_var: __app__
+  when: __app__.enabled | bool
+  notify:
+    - restart nginx
+#
+# - name: configure | Validate the Nginx configuration
+#   ansible.builtin.shell: |
+#     nginx -t
+#   register: _nginx_config_test_
+#   failed_when:
+#     - "'syntax is ok' not in _nginx_config_test_.stdout"
+#     - "'test is successful' not in _nginx_config_test_.stdout"
+#   changed_when:
+#     - _nginx_config_test_.rc != 0
+
+# - name: configure | Show the output of Nginx configuration test
+#   ansible.builtin.debug:
+#     msg: "System {{ inventory_hostname }} Nginx configuration test result is: {{ _nginx_config_test_.stdout }}"

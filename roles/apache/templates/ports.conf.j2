@@ -1,0 +1,16 @@
+#jinja2: lstrip_blocks: True
+
+# {{ ansible_managed }}
+# Apache HTTP server port configuration file
+
+Listen {{ apache_ports_http }}
+
+{% if apache_ports_enable_https %}
+<IfModule ssl_module>
+    Listen {{ apache_ports_https }}
+</IfModule>
+
+<IfModule mod_gnutls.c>
+    Listen {{ apache_ports_https }}
+</IfModule>
+{% endif %}

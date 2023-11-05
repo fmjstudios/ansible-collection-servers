@@ -1,0 +1,102 @@
+#jinja2: lstrip_blocks: False, trim_blocks: True
+#
+# TODO(FMJdev): This is somehow required since Apache likes to pull the '</If>'
+# in line 83 into the previous line when rendering, breaking the template and the
+# role..
+
+# {{ ansible_managed }}
+# Apache HTTP server virtual host configuration file
+
+{% if __file__.vhosts is defined and __file__.vhosts != [] %}
+{% for vh in __file__.vhosts %}
+<VirtualHost {{ vh.listen_address }}:{{ vh.listen_port }}>
+  # SERVER CONFIGURATION
+  {% if vh.server_name is defined and vh.server_name != "" %}
+  ServerName {{ vh.server_name }}
+  {% endif %}
+  {% if vh.server_alias is defined and vh.server_alias != "" %}
+  ServerAlias {{ vh.server_alias }}
+  {% endif %}
+  {% if vh.server_admin is defined and vh.server_admin != "" %}
+  ServerAdmin {{ vh.server_admin }}
+  {% endif %}
+  {% if vh.document_root is defined and vh.document_root != "" %}
+  DocumentRoot {{ vh.document_root }}
+  {% endif %}
+  {% if vh.directory_index is defined and vh.directory_index != "" %}
+  DirectoryIndex {{ vh.directory_index }}
+  {% endif %}
+  {% if vh.protocols is defined and vh.protocols != "" %}
+  Protocols {{ vh.protocols }}
+  {% endif %}
+
+  # TLS CONFIGURATION
+  {% if vh.ssl is defined and vh.ssl != {} %}
+  {% if vh.ssl.certificate_file is defined and vh.ssl.certificate_file != "" %}
+  SSLCertificateFile {{ vh.ssl.certificate_file }}
+  {% endif %}
+  {% if vh.ssl.certificate_key_file is defined and vh.ssl.certificate_key_file != "" %}
+  SSLCertificateKeyFile {{ vh.ssl.certificate_key_file }}
+  {% endif %}
+  {% if vh.ssl.certificate_chain_file is defined and vh.ssl.certificate_chain_file != "" %}
+  SSLCertificateChainFile {{ vh.ssl.certificate_chain_file }}
+  {% endif %}
+  {% if vh.ssl.protocol is defined and vh.ssl.protocol != "" %}
+  SSLProtocol {{ vh.ssl.protocol }}
+  {% endif %}
+  {% if vh.ssl.cipher_suite is defined and vh.ssl.cipher_suite != "" %}
+  SSLCipherSuite {{ vh.ssl.cipher_suite }}
+  {% endif %}
+  {% if vh.ssl.honor_cipher_order is defined and vh.ssl.honor_cipher_order != "" %}
+  SSLHonorCipherOrder {{ vh.ssl.honor_cipher_order }}
+  {% endif %}
+  {% if vh.ssl.session_tickets is defined and vh.ssl.session_tickets != "" %}
+  SSLSessionTickets {{ vh.ssl.session_tickets }}
+  {% endif %}
+  {% if vh.ssl.use_stapling is defined and vh.ssl.use_stapling != "" %}
+  SSLUseStapling {{ vh.ssl.use_stapling }}
+  {% endif %}
+  {% if vh.ssl.stapling_cache is defined and vh.ssl.stapling_cache != "" %}
+  SSLStaplingCache  {{ vh.ssl.stapling_cache }}
+  {% endif %}
+  {% endif %}
+
+  # REWRITE CONFIGURATION
+  {% if vh.rewrites is defined and vh.rewrites != {} %}
+  {% if vh.rewrites.engine is defined and vh.rewrites.engine != "" %}
+  RewriteEngine {{ vh.rewrites.engine }}
+  {% endif %}
+  {% if vh.rewrites.condition is defined and vh.rewrites.condition != "" %}
+  RewriteCond {{ vh.rewrites.condition }}
+  {% endif %}
+  {% if vh.rewrites.rule is defined and vh.rewrites.rule != "" %}
+  RewriteRule {{ vh.rewrites.rule }}
+  {% endif %}
+  {% endif %}
+
+  # FILE MATCH CONFIGURATION
+  {% if vh.file_matches is defined and vh.file_matches != [] %}
+  {% for file in vh.file_matches %}
+  <FilesMatch {{ file.match }}>
+    {% if file.handler is defined and file.handler != "" +%}
+    <If "-f %{REQUEST_FILENAME}">
+      SetHandler {{ file.handler }} {% if file.options is defined +%}{{ file.options }}{% endif %}
+    {% endif %}
+
+    </If>
+  </FilesMatch>
+  {% endfor %}
+  {% endif %}
+
+  # LOG CONFIGURATION
+  {% if vh.log is defined and vh.log != {} %}
+  {% if vh.log.custom is defined and vh.log.custom != "" %}
+  CustomLog {{ vh.log.custom }}
+  {% endif %}
+  {% if vh.log.error is defined and vh.log.error != "" %}
+  ErrorLog {{ vh.log.error }}
+  {% endif %}
+  {% endif %}
+</VirtualHost>
+{% endfor %}
+{% endif %}

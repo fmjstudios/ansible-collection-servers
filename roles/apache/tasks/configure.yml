@@ -1,0 +1,189 @@
+---
+- name: configure | Ensure the Apache group exists
+  ansible.builtin.group:
+    name: "{{ apache_env_group }}"
+    state: present
+
+- name: configure | Ensure the system users are part of the Nginx system user group
+  ansible.builtin.user:
+    name: "{{ __user__ }}"
+    group: "{{ apache_env_group }}"
+    append: true
+  loop: "{{ apache_system_users }}"
+  loop_control:
+    loop_var: __user__
+
+- name: configure | Configure Apache HTTP Server modules
+  notify:
+    - restart apache
+  block:
+    - name: configure | Check if the enabled modules have a '.load' file
+      ansible.builtin.stat:
+        path: "{{ __apache_conf_dir }}/mods-available/{{ __mod__.name }}.load"
+      register: _apache_mod_load_check_
+      loop: "{{ apache_mods_configuration }}"
+      loop_control:
+        loop_var: __mod__
+    # when: __mod__.enabled
+
+    - name: configure | Check if the enabled modules have a '.conf' file
+      ansible.builtin.stat:
+        path: "{{ __apache_conf_dir }}/mods-available/{{ __mod__.name }}.conf"
+      register: _apache_mod_conf_check_
+      loop: "{{ apache_mods_configuration }}"
+      loop_control:
+        loop_var: __mod__
+    # when: __mod__.enabled
+
+    - name: configure | Check if enabled libraries have a '.conf' file
+      ansible.builtin.stat:
+        path: "{{ __apache_conf_dir }}/conf-available/{{ __lib__.name }}.conf"
+      register: _apache_lib_conf_check_
+      loop: "{{ apache_libs_configuration }}"
+      loop_control:
+        loop_var: __lib__
+
+    - name: configure | Disable Apache HTTP Server modules
+      ansible.builtin.file:
+        path: "{{ __apache_conf_dir }}/mods-enabled/{{ __mod__.name }}.load"
+        state: absent
+      loop: "{{ apache_mods_configuration }}"
+      loop_control:
+        loop_var: __mod__
+      when: not __mod__.enabled
+
+    - name: configure | Disable Apache HTTP Server modules configuration
+      ansible.builtin.file:
+        path: "{{ __apache_conf_dir }}/mods-enabled/{{ __mod__.name }}.conf"
+        state: absent
+      loop: "{{ apache_mods_configuration }}"
+      loop_control:
+        loop_var: __mod__
+      when: not __mod__.enabled
+
+    - name: configure | Configure the Apache HTTP Server modules
+      ansible.builtin.template:
+        src: mods.j2
+        dest: "{{ __apache_conf_dir }}/mods-available/{{ __cmod__.__mod__.name }}.conf"
+        owner: root
+        group: root
+        force: true
+        mode: "{{ __apache_conf_perm_mode }}"
+      loop: "{{ _apache_mod_conf_check_.results }}"
+      loop_control:
+        loop_var: __cmod__
+      when: >
+        __cmod__.stat is defined and __cmod__.stat.exists and
+        __cmod__.__mod__.enabled and __cmod__.__mod__.configuration is defined
+
+    - name: configure | Enable Apache HTTP Server modules
+      ansible.builtin.file:
+        src: "{{ __apache_conf_dir }}/mods-available/{{ __cmod__.__mod__.name }}.load"
+        dest: "{{ __apache_conf_dir }}/mods-enabled/{{ __cmod__.__mod__.name }}.load"
+        state: link
+        mode: 0777
+      loop: "{{ _apache_mod_load_check_.results }}"
+      loop_control:
+        loop_var: __cmod__
+      when: >
+        __cmod__.stat is defined and __cmod__.stat.exists and
+        __cmod__.__mod__.enabled
+
+    - name: configure | Enable Apache HTTP Server modules configuration
+      ansible.builtin.file:
+        src: "{{ __apache_conf_dir }}/mods-available/{{ __cmod__.__mod__.name }}.conf"
+        dest: "{{ __apache_conf_dir }}/mods-enabled/{{ __cmod__.__mod__.name }}.conf"
+        state: link
+        mode: 0777
+      loop: "{{ _apache_mod_conf_check_.results }}"
+      loop_control:
+        loop_var: __cmod__
+      when: >
+        __cmod__.stat is defined and __cmod__.stat.exists and
+        __cmod__.__mod__.enabled
+
+    - name: configure | Enable Apache HTTP Server modules configuration
+      ansible.builtin.file:
+        src: "{{ __apache_conf_dir }}/conf-available/{{ __clib__.__lib__.name }}.conf"
+        dest: "{{ __apache_conf_dir }}/conf-enabled/{{ __clib__.__lib__.name }}.conf"
+        state: link
+        mode: 0777
+      loop: "{{ _apache_lib_conf_check_.results }}"
+      loop_control:
+        loop_var: __clib__
+      when: >
+        __clib__.stat is defined and __clib__.stat.exists and
+        __clib__.__lib__.enabled
+
+- name: configure | Copy Apache HTTP Server mime types
+  ansible.builtin.copy:
+    src: mime.types
+    dest: "{{ __apache_conf_dir }}/mime.types"
+    owner: root
+    group: root
+    mode: "{{ __apache_conf_perm_mode }}"
+  notify:
+    - restart apache
+
+- name: configure | Configure Apache HTTP Server ports
+  ansible.builtin.template:
+    src: ports.conf.j2
+    dest: "{{ __apache_conf_dir }}/ports.conf"
+    owner: root
+    group: root
+    force: true
+    mode: "{{ __apache_conf_perm_mode }}"
+  notify:
+    - restart apache
+
+- name: configure | Configure Apache HTTP Server 'envvars'
+  ansible.builtin.template:
+    src: envvars.j2
+    dest: "{{ __apache_conf_dir }}/envvars"
+    owner: root
+    group: root
+    force: true
+    mode: "{{ __apache_conf_perm_mode }}"
+  notify:
+    - restart apache
+
+- name: configure | Configure Apache HTTP Server main configuration file
+  ansible.builtin.template:
+    src: apache2.conf.j2
+    dest: "{{ __apache_conf_dir }}/apache2.conf"
+    owner: root
+    group: root
+    mode: "{{ __apache_conf_perm_mode }}"
+  notify:
+    - restart apache
+
+- name: configure | Configure the Apache HTTP Server virtual hosts
+  ansible.builtin.template:
+    src: vhosts.conf.j2
+    dest: "{{ __apache_conf_dir }}/sites-available/{{ __file__.label }}.conf"
+    owner: root
+    group: root
+    force: true
+    mode: "{{ __apache_conf_perm_mode }}"
+  register: _apache_vhost_creation_
+  notify:
+    - restart apache
+  loop: "{{ apache_virtual_hosts }}"
+  loop_control:
+    loop_var: __file__
+  when: >
+    _apache_vhosts_ | count > 0
+
+- name: configure | Enable the new virtual host configuration by symlinking to 'sites-enabled'
+  ansible.builtin.file:
+    src: "{{ __apache_conf_dir }}/sites-available/{{ __file__.label }}.conf"
+    dest: "{{ __apache_conf_dir }}/sites-enabled/{{ __file__.label }}.conf"
+    state: link
+    mode: 0777
+  notify:
+    - restart apache
+  loop: "{{ apache_virtual_hosts }}"
+  loop_control:
+    loop_var: __file__
+  when: >
+    _apache_vhosts_ | count > 0

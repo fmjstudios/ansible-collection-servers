@@ -1,0 +1,171 @@
+---
+# Either 'official' or 'os' to either use the official Ngnix repositories or the
+# default built-in Ubuntu ones which might or might not be outdated
+nginx_package_source: "official"
+
+# Either 'mainline' or 'stable' - which branch to use as the package source when
+# using the official Nginx repositories. As Nginx recommends deploying the 'mainline'
+# branch at all times, this is the default
+nginx_package_official_variant: "mainline"
+
+### INSTALLATION VARIABLES
+# The Nginx system user account
+nginx_main_user: "www-data"
+nginx_main_group: "{{ nginx_main_user }}"
+
+nginx_system_users:
+  []
+  # - ar
+
+# Nginx worker processes to launch (often set to cpu count)
+nginx_main_worker_processes: "{{ ansible_processor_vcpus | default(ansible_processor_count) }}"
+
+# Nginx error log file path and its' corresponding log level
+# Nginx log level values are: debug, info, notice, warn, error, crit, alert, or emerg
+nginx_main_error_log_file: "/var/log/nginx/error.log warn"
+
+# Nginx process id file path
+nginx_main_pid_file: /var/run/nginx.pid
+
+# Nginx server extra configuration directives to be applied as literals
+# These will be set in the main context inside the Nginx configuration file
+nginx_main_extra_config: ""
+# Example extra config direcives:
+#   nginx_extra_conf_options: |
+#     env VARIABLE;
+#     include /etc/nginx/main.d/*.conf;
+
+# Nginx worker connections to create
+nginx_events_worker_connections: 1024
+
+# If multi_accept is disabled, a worker process will accept one new connection at a time.
+# Otherwise, a worker process will accept all new connections at a time.
+nginx_events_multi_accept: "off"
+
+# The Nginx logging format
+nginx_http_log_format: |
+  main  '$remote_addr - $remote_user [$time_local] "$request" '
+        '$status $body_bytes_sent "$http_referer" '
+        '"$http_user_agent" "$http_x_forwarded_for"';
+
+# The file path for the access log and log format
+nginx_http_access_log: "/var/log/nginx/access.log main buffer=16k flush=15m"
+
+# Whether or not to enable the use of sendfile()
+nginx_http_sendfile: "on"
+
+# TCP options
+nginx_http_tcp_nopush: "on"
+nginx_http_tcp_nodelay: "on"
+
+# Keepalive options
+nginx_http_keepalive_timeout: "90"
+nginx_http_keepalive_requests: "600"
+
+# Compression
+nginx_http_gzip: "off"
+
+nginx_http_client_max_body_size: "64m"
+
+# Whether or not to create hash tables for different server storage
+# Size for hash tables entries
+nginx_http_server_tokens: "on"
+nginx_http_server_names_hash_bucket_size: "64"
+
+# Sets the path for the proxy cache
+nginx_http_proxy_cache_path: ""
+
+# Define extra http options to be applied as a literals
+nginx_http_extra_config: ""
+# Example extra http options:
+#    nginx_extra_http_options: |
+#      proxy_buffering    off;
+#      proxy_set_header   X-Real-IP $remote_addr;
+#      proxy_set_header   X-Scheme $scheme;
+#      proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+#      proxy_set_header   Host $http_host;
+
+# Nginx upstream configuration
+nginx_http_upstreams: []
+# - name: myapp1
+#   strategy: "ip_hash" # "least_conn", etc.
+#   keepalive: 16 # optional
+#   servers:
+#     - "srv1.example.com"
+#     - "srv2.example.com weight=3"
+#     - "srv3.example.com"
+
+# Remove the default virtual host configuration file
+nginx_remove_default_vhost: false
+
+# Virtual host configuration
+nginx_vhost_config:
+  []
+  # - label: example.com
+  #   enabled: true
+  #   server_blocks:
+  #     - server_name: "_"
+  #       listen:
+  #         - "80"
+  #         - "[::]:80"
+  #       extra_configuration: |
+  #         add_header Strict-Transport-Security max-age=2592000;
+  #         return 301 https://$host;
+  #     - server_name: "example.com www.example.com app.example.com"
+  #       listen:
+  #         - "443 ssl http2"
+  #         - "[::]:443 ssl http2"
+  #       root: /var/www/html/example.com
+  #       index: "index.php shopware.php"
+  #       resolver: "8.8.8.8 8.8.4.4 valid=1h"
+  #       ssl:
+  #         certificate: /home/ar/certs/cert.pem
+  #         certificate_key: /home/ar/certs/key.pem
+  #         trusted_certificate: /home/ar/certs/fullchain.pem
+  #         dhparam: /etc/ssl/nginx/dhparam.pem
+  #         protocols: "TLSv1.2 TLSv1.3"
+  #         prefer_server_ciphers: "on"
+  #         ciphers: "ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES128-GCM-SHA256:\
+  #           ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-CCM:DHE-RSA-AES256-CCM8:\
+  #           DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-CCM:DHE-RSA-AES128-CCM8:\
+  #           DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
+  #         session_tickets: "off"
+  #         session_timeout: 1d
+  #         session_cache: shared:SSL:10m
+  #         buffer_size: 8k
+  #         stapling: "on"
+  #         stapling_verify: "on"
+  #       log:
+  #         error:
+  #           path: /var/log/nginx/example.com_error.log
+  #           options: error
+  #         access:
+  #           path: /var/log/nginx/example.com_access.log
+  #           options: "main gzip"
+  #       headers:
+  #         - type: X-Content-Type-Options
+  #           value: nosniff
+  #         - type: Content-Security-Policy
+  #           value: |
+  #             "object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; frame-ancestors 'self';"
+  #         - type: Strict-Transport-Security
+  #           value: |
+  #             "max-age=15552001; includeSubdomains; preload"
+  #       locations:
+  #         - match: "/"
+  #           config: |
+  #             try_files $uri $uri/ /shopware.php$is_args$args;
+  #         - match: "/recovery/install"
+  #           config: |
+  #             try_files $uri /recovery/install/index.php$is_args$args;
+  #         - match: '~ \.php$'
+  #           config: |
+  #             fastcgi_split_path_info ^(.+\.php)(/.+)$;
+  #             fastcgi_pass unix:/var/run/php/php7.0-your_user_name-fpm.sock;
+  #             fastcgi_index shopware.php;
+  #             include fastcgi_params;
+  #             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+  #             fastcgi_intercept_errors off;
+  #             fastcgi_buffer_size 16k;
+  #             fastcgi_buffers 4 16k;
+  #       extra_configuration: ""

@@ -1,0 +1,24 @@
+---
+- name: Include setup tasks
+  ansible.builtin.include_tasks: "setup-{{ ansible_os_family }}.yml"
+
+- name: Get installed Apache version
+  ansible.builtin.command: "{{ apache_daemon_path }}/{{ apache_daemon }} -v"
+  changed_when: false
+  check_mode: false
+  register: _apache_version
+
+- name: Parse the correct Apache version from command output
+  ansible.builtin.set_fact:
+    apache_version: "{{ _apache_version.stdout.split()[2].split('/')[1] }}"
+
+- name: Include Apache 2.2 variables
+  ansible.builtin.include_vars: apache-2.2.yml
+  when: "apache_version.split('.')[1] == '2'"
+
+- name: Include Apache 2.4 variables
+  ansible.builtin.include_vars: apache-2.4.yml
+  when: "apache_version.split('.')[1] == '4'"
+
+- name: Configure Apache
+  ansible.builtin.include_tasks: "configure-{{ ansible_os_family }}.yml"

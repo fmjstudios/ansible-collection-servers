@@ -1,0 +1,12 @@
+---
+__apache_package: apache2
+__apache_dependencies:
+  - libapache2-mod-fcgid
+
+__apache_default_conf_name: 000-default.conf
+
+__apache_conf_dir: /etc/apache2
+__apache_conf_perm_mode: 0644
+__apache_conf_dir_perm_mode: 0755
+
+__apache_systemd_service: apache2

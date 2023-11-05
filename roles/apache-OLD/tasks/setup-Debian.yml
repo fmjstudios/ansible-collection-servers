@@ -1,0 +1,16 @@
+---
+- name: setup-Debian | Update the apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: setup-Debian | Install apache
+  ansible.builtin.apt:
+    name: "{{ __apache__ }}"
+    state: present
+  loop: "{{ apache_packages }}"
+  loop_control:
+    loop_var: __apache__
+# - name: setup-Debian | Debug apache packages variable
+#   ansible.builtin.debug:
+#     msg: "Apache packages are: {{ apache_packages }}"

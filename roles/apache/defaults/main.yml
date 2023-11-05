@@ -1,0 +1,143 @@
+---
+apache_system_users: []
+
+apache_env_user: www-data
+apache_env_group: "{{ apache_env_user }}"
+apache_env_pid_file: "{{ apache_env_run_dir }}/apache2.pid"
+apache_env_run_dir: "/var/run/apache2"
+apache_env_lock_dir: "/var/lock/apache2"
+apache_env_log_dir: "/var/log/apache2"
+apache_env_lang: C
+apache_env_use_system_locale: false
+apache_env_ulimit: 8192
+apache_env_args: ""
+apache_env_maintscript_debug: false
+
+apache_ports_http: 80
+apache_ports_enable_https: false
+apache_ports_https: 443
+
+apache_conf_timeout: 300
+apache_conf_keep_alive: "On"
+apache_conf_keep_alive_timeout: 5
+apache_conf_max_keep_alive_requests: 100
+apache_conf_hostname_lookups: "Off"
+apache_conf_error_log: "${APACHE_LOG_DIR}/error.log"
+apache_conf_log_level: warn
+
+apache_conf_include:
+  - "ports.conf"
+
+apache_conf_include_optional:
+  - "mods-enabled/*.conf"
+  - "mods-enabled/*.load"
+  - "sites-enabled/*.conf"
+  - "conf-enabled/*.conf"
+
+apache_conf_dir_blocks:
+  []
+  # - path: ""
+  #   options: FollowSymLinks
+  #   allow_override: None
+  #   require: all denied
+  # - path: /usr/share
+  #   options: ""
+  #   allow_override: None
+  #   require: all granted
+  # - path: /var/www/
+  #   options: Indexes FollowSymLinks
+  #   allow_override: None
+  #   require: all granted
+
+apache_conf_access_file_name: .htaccess
+
+apache_conf_file_match_blocks:
+  - match: '^\.ht'
+    require: all denied
+
+apache_conf_log_formats:
+  - format: '%v:%p %h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\"'
+    name: vhost_combined
+  - format: '%h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\"'
+    name: combined
+  - format: '%h %l %u %t \"%r\" %>s %O'
+    name: common
+  - format: "%{Referer}i -> %U"
+    name: referer
+  - format: "%{User-agent}i"
+    name: agent
+
+apache_remove_default_vhost: false
+
+apache_virtual_hosts:
+  []
+  # - label: example.com
+  #   enabled: true
+  #   vhosts:
+  #     - listen_address: "*"
+  #       listen_port: 80
+  #       server_name: example.com
+  #       server_alias: www.example.com
+  #       server_admin: admin@example.com
+  #       rewrites:
+  #         engine: "on"
+  #         condition: "%{SERVER_PORT} 80"
+  #         rule: "^(.*)$ https://www.example.com$1 [R=301,L]"
+  #       log:
+  #         custom: /var/log/apache2/example.com_access.log combined
+  #         error: /var/log/apache2/example.com_error.log
+  #     - listen_address: "*"
+  #       listen_port: 443
+  #       server_name: example.com
+  #       server_alias: www.example.com
+  #       document_root: /var/www/html/example.com
+  #       directory_index: index.php
+  #       protocols: h2 h2c http/1.1
+  #       log:
+  #         custom: /var/log/apache2/example.com_access.log
+  #         error: /var/log/apache2/example.com_error.log
+  #       ssl:
+  #         certificate_file: /etc/letsencrypt/live/example.com/cert.pem
+  #         certificate_key_file: /etc/letsencrypt/live/example.com/privkey.pem
+  #         certificate_chain_file: /etc/letsencrypt/live/example.com/fullchain.pem
+  #         protocol: all -SSLv3 -TLSv1 -TLSv1.1
+  #         cipher_suite:
+  #           "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:\
+  #           ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:\
+  #           ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:\
+  #           DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:\
+  #           DHE-RSA-CHACHA20-POLY1305"
+  #         honor_cipher_order: "Off"
+  #         session_tickets: "Off"
+  #         use_stapling: "On"
+  #         stapling_cache: "shmcb:logs/ssl_stapling(32768)"
+  #       directories:
+  #         - path: /var/www/html/example.com
+  #           options: Indexes FollowSymLinks
+  #           allow_override: None
+  #           order: allow,deny
+  #           require: all granted
+  #       file_matches:
+  #         - match: '\.php$'
+  #           handler: proxy:unix:/run/php/php8.2-fpm.sock|fcgi://localhost/
+  #           options: timeout=300
+
+apache_mods_configuration:
+  []
+  # - name: mpm_event
+  #   enabled: true
+  #   configuration: |
+  #     StartServers             2
+  #     MinSpareThreads          25
+  #     MaxSpareThreads          75
+  #     ThreadLimit              64
+  #     ThreadsPerChild          25
+  #     MaxRequestWorkers        150
+  #     MaxConnectionsPerChild   0
+  # - name: proxy
+  #   enabled: false
+
+apache_libs_configuration:
+  []
+  # - name: php8.1-fpm
+  #   enabled: true

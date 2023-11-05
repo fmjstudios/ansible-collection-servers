@@ -1,0 +1,137 @@
+---
+- name: install | Install Nginx from the OS repositories
+  ansible.builtin.apt:
+    name: "{{ __nginx_package_name }}"
+    state: present
+  when:
+    - nginx_package_source == "os"
+
+- name: install | Extract the server block configuration and make it available in a new variable
+  ansible.builtin.set_fact:
+    _nginx_vhost_servers_: "{{ __block__.server_blocks }}"
+  loop: "{{ nginx_vhost_config | flatten(levels=1) }}"
+  loop_control:
+    loop_var: __block__
+
+- name: install | Ensure the required installation paths exist
+  block:
+    - name: install | Ensure that the Nginx configuration directory exists
+      ansible.builtin.file:
+        path: "{{ __nginx_conf_dir }}"
+        state: directory
+        owner: "{{ nginx_main_user }}"
+        group: "{{ nginx_main_group }}"
+        mode: 0644
+    - name: install | Ensure the Nginx 'sites-available' path exists
+      ansible.builtin.file:
+        path: "{{ __nginx_vhost_path }}"
+        state: directory
+        mode: 0755
+
+    - name: install | Ensure the Nginx 'sites-enabled' path exists
+      ansible.builtin.file:
+        path: "{{ __nginx_vhost_include_path }}"
+        state: directory
+        mode: 0755
+
+    - name: install | Ensure error log path exists
+      ansible.builtin.file:
+        path: "{{ __srv__.log.error.path | dirname }}"
+        state: directory
+        owner: "{{ nginx_main_user }}"
+        group: "{{ nginx_main_group }}"
+        mode: 0755
+      loop: "{{ _nginx_vhost_servers_ }}"
+      loop_control:
+        loop_var: __srv__
+      when: __srv__.log is defined
+
+    - name: install | Ensure access log path exists
+      ansible.builtin.file:
+        path: "{{ __srv__.log.access.path | dirname }}"
+        state: directory
+        owner: "{{ nginx_main_user }}"
+        group: "{{ nginx_main_group }}"
+        mode: 0755
+      loop: "{{ _nginx_vhost_servers_ }}"
+      loop_control:
+        loop_var: __srv__
+      when: __srv__.log is defined
+
+- name: install | Set up the official Nginx repositories
+  block:
+    - name: install | Import the Nginx signing key
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+        | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
+      args:
+        creates: /usr/share/keyrings/nginx-archive-keyring.gpg
+      register: _nginx_key_import_
+      failed_when: _nginx_key_import_.rc != 0
+
+    - name: install | Get the key contents
+      ansible.builtin.shell: |
+        gpg --dry-run --quiet --no-keyring --import --import-options \
+        import-show /usr/share/keyrings/nginx-archive-keyring.gpg
+      register: _nginx_key_contents_
+      failed_when: _nginx_key_contents_.rc != 0
+      changed_when: false
+
+    - name: install | Verify that the downloaded file contains the proper key
+      ansible.builtin.fail:
+        msg: "Valid official Nginx fingerprint {{ __nginx_key_valid_fingerprint }} not found in downloaded key!"
+      failed_when: false
+      when:
+        - "'__nginx_key_valid_fingerprint' not in _nginx_key_contents_.stdout"
+
+    - name: install | Set up the apt repositories for stable branch
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+        http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" \
+            | tee /etc/apt/sources.list.d/nginx.list
+      args:
+        creates: /etc/apt/sources.list.d/nginx.list
+      register: _nginx_apt_stable_repositories_
+      failed_when: _nginx_apt_stable_repositories_.rc != 0
+      when:
+        - nginx_package_official_variant == "stable"
+
+    - name: install | Set up the apt repositories for mainline branch
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+        http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" \
+            | tee /etc/apt/sources.list.d/nginx.list
+      args:
+        creates: /etc/apt/sources.list.d/nginx.list
+      register: _nginx_apt_stable_repositories_
+      failed_when: _nginx_apt_stable_repositories_.rc != 0
+      when:
+        - nginx_package_official_variant == "mainline"
+
+    - name: install | Pin the apt repository to the official Nginx repositories
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
+            |  tee /etc/apt/preferences.d/99nginx
+      args:
+        creates: /etc/apt/preferences.d/99nginx
+      register: _nginx_apt_repository_pin_
+      failed_when: _nginx_apt_repository_pin_.rc != 0
+      when:
+        - nginx_package_source == "official"
+
+- name: install | Update system package caches
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - nginx_package_source == "official"
+
+- name: install | Install Nginx from the official repositories
+  ansible.builtin.apt:
+    name: "{{ __nginx_package_name }}"
+    state: present
+  when:
+    - nginx_package_source == "official"

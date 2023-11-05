@@ -1,0 +1,67 @@
+---
+- name: install | Extract the server block configuration and make it available in a new variable
+  ansible.builtin.set_fact:
+    _apache_vhosts_: "{{ __file__.vhosts }}"
+  loop: "{{ apache_virtual_hosts | flatten(levels=1) }}"
+  loop_control:
+    loop_var: __file__
+
+- name: install | Ensure the required directories and files exist with the correct permissions
+  block:
+    - name: install | Ensure the Apache HTTP Server configuration directory exists
+      ansible.builtin.file:
+        path: "{{ __apache_conf_dir }}"
+        state: directory
+        owner: "{{ apache_env_user }}"
+        group: "{{ apache_env_group }}"
+        mode: "{{ __apache_conf_dir_perm_mode }}"
+
+    - name: install | Ensure the Apache HTTP Server logging directory exists
+      ansible.builtin.file:
+        path: "{{ apache_env_log_dir }}"
+        state: directory
+        owner: "{{ apache_env_user }}"
+        group: "{{ apache_env_group }}"
+        mode: "{{ __apache_conf_dir_perm_mode }}"
+
+    - name: install | Ensure the Apache HTTP Server lock directory exists
+      ansible.builtin.file:
+        path: "{{ apache_env_lock_dir }}"
+        state: directory
+        owner: "{{ apache_env_user }}"
+        group: "{{ apache_env_group }}"
+        mode: "{{ __apache_conf_dir_perm_mode }}"
+
+    - name: install | Ensure the Apache HTTP Server run directory exists
+      ansible.builtin.file:
+        path: "{{ apache_env_run_dir }}"
+        state: directory
+        owner: "{{ apache_env_user }}"
+        group: "{{ apache_env_group }}"
+        mode: "{{ __apache_conf_dir_perm_mode }}"
+
+- name: install | Remove the default virtual hosts configuration file
+  ansible.builtin.file:
+    path: "{{ __apache_conf_dir }}/sites-enabled/{{ __apache_default_conf_name }}"
+    state: absent
+  notify:
+    - restart apache
+  when: apache_remove_default_vhost
+
+- name: install | Update the distribution package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: install | Install the Apache2 HTTP Server distribution package
+  ansible.builtin.apt:
+    name: "{{ __apache_package }}"
+    state: present
+
+- name: install | Install the Apache2 HTTP Server dependencies
+  ansible.builtin.apt:
+    name: "{{ __dep__ }}"
+    state: present
+  loop: "{{ __apache_dependencies }}"
+  loop_control:
+    loop_var: __dep__

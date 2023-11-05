@@ -1,0 +1,37 @@
+#jinja2: lstrip_blocks: True
+
+# {{ ansible_managed }}
+# Apache HTTP server environment variables configuration file
+
+unset HOME
+
+export APACHE_RUN_USER="{{ apache_env_user }}"
+export APACHE_RUN_GROUP="{{ apache_env_group }}"
+
+export APACHE_PID_FILE="{{ apache_env_pid_file }}"
+export APACHE_RUN_DIR="{{ apache_env_run_dir }}"
+export APACHE_LOCK_DIR="{{ apache_env_lock_dir }}"
+
+export APACHE_LOG_DIR="{{ apache_env_log_dir }}"
+
+
+export LANG="{{ apache_env_lang }}"
+export LANG
+
+{% if apache_env_use_system_locale %}
+. /etc/default/locale
+{% else %}
+#. /etc/default/locale
+{% endif %}
+
+#export APACHE_LYNX='www-browser -dump'
+
+APACHE_ULIMIT_MAX_FILES='ulimit -n {{ apache_env_ulimit }}'
+
+#export APACHE_ARGUMENTS='{{ apache_env_args }}'
+
+{% if apache_env_maintscript_debug %}
+export APACHE2_MAINTSCRIPT_DEBUG=1
+{% else %}
+#export APACHE2_MAINTSCRIPT_DEBUG=1
+{% endif %}

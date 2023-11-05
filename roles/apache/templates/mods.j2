@@ -1,0 +1,9 @@
+#jinja2: lstrip_blocks: True
+
+# {{ ansible_managed }}
+# Apache HTTP server module configuration file
+# Module: {{ __cmod__.__mod__.name }}
+
+<IfModule {{ __cmod__.__mod__.name }}_module>
+{{ __cmod__.__mod__.configuration | indent(width=4, first=True) }}
+</IfModule>

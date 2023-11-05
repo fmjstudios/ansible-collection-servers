@@ -1,0 +1,120 @@
+---
+- name: preflight | Assert usage of systemd as an init system
+  ansible.builtin.assert:
+    that: ansible_service_mgr == 'systemd'
+    msg: "This role only works with systemd"
+
+- name: preflight | Install package fact dependencies
+  become: true
+  ansible.builtin.package:
+    name: "{{ _pkg_fact_req }}"
+    state: present
+  when: (_pkg_fact_req)
+  vars:
+    _pkg_fact_req: "{% if (ansible_pkg_mgr == 'apt') %}\
+      {{ ('python-apt' if ansible_python_version is version('3', '<') else 'python3-apt') }}
+      {% else %}\
+      {% endif %}"
+
+- name: preflight | Gather package facts
+  ansible.builtin.package_facts:
+  when: "not 'packages' in ansible_facts"
+
+- name: preflight | Ensure the system has the necessary dependencies
+  ansible.builtin.apt:
+    name: "{{ __dep__ }}"
+    state: present
+    update_cache: true
+  loop: "{{ __deps }}"
+  loop_control:
+    loop_var: __dep__
+
+- name: preflight | Assert that the Nginx install variables are correctly set
+  ansible.builtin.assert:
+    that:
+      - nginx_package_source is defined
+      - nginx_package_source is string
+      - nginx_package_source is match ('^(os|official)$')
+      - nginx_package_official_variant is defined
+      - nginx_package_official_variant is string
+      - nginx_package_official_variant is match ('^(mainline|stable)$')
+
+- name: preflight | Assert that the Nginx configuration variables are correctly set
+  ansible.builtin.assert:
+    that:
+      - nginx_main_user is defined
+      - nginx_main_user is string
+      - nginx_main_worker_processes is defined
+      - nginx_main_worker_processes is string
+      - nginx_main_error_log_file is defined
+      - nginx_main_error_log_file is string
+      - nginx_main_pid_file is defined
+      - nginx_main_pid_file is string
+      - nginx_main_extra_config is defined
+      - nginx_main_extra_config is string
+      - nginx_events_worker_connections is defined
+      - nginx_events_worker_connections is number
+      - nginx_events_worker_connections >= 1024
+      - nginx_events_multi_accept is defined
+      - nginx_events_multi_accept is string
+      - nginx_http_log_format is defined
+      - nginx_http_log_format is string
+      - nginx_http_access_log is defined
+      - nginx_http_access_log is string
+      - nginx_http_sendfile is defined
+      - nginx_http_sendfile is string
+      - nginx_http_tcp_nopush is defined
+      - nginx_http_tcp_nopush is string
+      - nginx_http_tcp_nodelay is defined
+      - nginx_http_tcp_nodelay is string
+      - nginx_http_keepalive_timeout is defined
+      - nginx_http_keepalive_timeout is string
+      - nginx_http_keepalive_requests is defined
+      - nginx_http_keepalive_requests is string
+      - nginx_http_gzip is defined
+      - nginx_http_gzip is string
+      - nginx_http_client_max_body_size is defined
+      - nginx_http_client_max_body_size is string
+      - nginx_http_server_tokens is defined
+      - nginx_http_server_tokens is string
+      - nginx_http_server_names_hash_bucket_size is defined
+      - nginx_http_server_names_hash_bucket_size is string
+      - nginx_http_proxy_cache_path is defined
+      - nginx_http_proxy_cache_path is string
+      - nginx_http_extra_config is defined
+      - nginx_http_extra_config is string
+      - nginx_http_upstreams is defined
+      - nginx_http_upstreams is iterable
+      - nginx_remove_default_vhost is defined
+      - nginx_remove_default_vhost is boolean
+      - nginx_vhost_config is defined
+      - nginx_vhost_config is iterable
+
+- name: preflight | Assert that Nginx virtual hosts main configuration variables are correctly set
+  ansible.builtin.assert:
+    that:
+      - __vhost__.label is defined
+      - __vhost__.label is string
+      - __vhost__.enabled is defined
+      - __vhost__.enabled is boolean
+      - __vhost__.server_blocks is defined
+      - __vhost__.server_blocks is iterable
+  loop: "{{ nginx_vhost_config }}"
+  loop_control:
+    loop_var: __vhost__
+
+- name: preflight | Assert that Nginx upstream configuration variables are correctly set
+  ansible.builtin.assert:
+    that:
+      - __upstream__.name is defined
+      - __upstream__.name is string
+      - __upstream__.strategy is defined
+      - __upstream__.strategy is string
+      - __upstream__.keepalive is defined
+      - __upstream__.keepalive is number
+      - __upstream__.servers is defined
+      - __upstream__.servers is iterable
+  loop: "{{ nginx_http_upstreams }}"
+  loop_control:
+    loop_var: __upstream__
+  when: nginx_http_upstreams

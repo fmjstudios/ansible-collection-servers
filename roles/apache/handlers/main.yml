@@ -1,0 +1,16 @@
+---
+- name: Restart Systemd daemon
+  listen: "restart systemd"
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when:
+    - not ansible_check_mode | bool
+
+- name: Restart Apache HTTP Server systemd service
+  listen: "restart apache"
+  ansible.builtin.systemd:
+    name: "{{ __apache_systemd_service }}"
+    daemon_reload: true
+    state: restarted
+  when:
+    - not ansible_check_mode | bool

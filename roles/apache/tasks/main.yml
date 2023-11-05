@@ -1,0 +1,45 @@
+---
+- name: Preflight
+  ansible.builtin.include_tasks:
+    file: preflight.yml
+    apply:
+      tags:
+        - apache_install
+        - apache_configure
+        - apache_run
+  tags:
+    - apache_install
+    - apache_configure
+    - apache_run
+
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      become: true
+      tags:
+        - apache_install
+  tags:
+    - apache_install
+
+- name: Configure
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      become: true
+      tags:
+        - apache_configure
+  tags:
+    - apache_configure
+
+- name: Ensure apache service is started and enabled
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ __apache_systemd_service }}"
+    state: started
+    enabled: true
+  notify:
+    - restart systemd
+
+- name: Flush handlers after run.
+  ansible.builtin.meta: flush_handlers
